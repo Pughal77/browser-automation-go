@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/stealth"
 )
 
@@ -18,10 +17,8 @@ type ScrapeResult struct {
 }
 
 func Scrape(ctx context.Context, targetURL string, timeout time.Duration) (*ScrapeResult, error) {
-	// Create a launcher
-	l := launcher.New().
-		Headless(true).
-		Set("headless", "new") // Ensure we use the new headless mode as requested
+	// Use the central launcher configuration
+	l := getLauncher()
 
 	launchURL, err := l.Launch()
 	if err != nil {

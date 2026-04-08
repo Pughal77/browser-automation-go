@@ -6,11 +6,29 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 )
+
+// getLauncher returns a configured launcher robust for Docker/Linux ARM64
+func getLauncher() *launcher.Launcher {
+	l := launcher.New().
+		Headless(true).
+		Set("headless", "new").
+		NoSandbox(true)
+
+	// Explicitly check for ROD_BIN or ROD_BROWSER_BIN to avoid auto-download fail on ARM64
+	if bin, exists := os.LookupEnv("ROD_BIN"); exists {
+		l.Bin(bin)
+	} else if bin, exists := os.LookupEnv("ROD_BROWSER_BIN"); exists {
+		l.Bin(bin)
+	}
+
+	return l
+}
 
 type VisitRequest struct {
 	URL     string `json:"url"`
@@ -33,16 +51,17 @@ type ErrorResponse struct {
 }
 
 func main() {
-	fmt.Println("Checking Chromium availability (may download if missing)...")
-	l := launcher.New().Headless(true).Set("headless", "new")
+	fmt.Println("Checking Chromium availability...")
+	l := getLauncher()
 	launchURL, err := l.Launch()
 	if err == nil {
-		fmt.Println("Chromium is ready for local testing!")
+		fmt.Println("Chromium is ready!")
 		// Connect and close immediately to clean up the process
 		browser := rod.New().ControlURL(launchURL).MustConnect()
 		browser.MustClose()
 	} else {
-		fmt.Printf("Warning: failed to pre-warm Chromium: %v\n", err)
+		fmt.Printf("Warning: failed to initialize Chromium: %v\n", err)
+		fmt.Println("Rod may attempt to download it on first use, which might fail on ARM64.")
 	}
 
 	http.HandleFunc("/visit", visitHandler)
